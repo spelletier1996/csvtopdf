@@ -13,7 +13,11 @@ import csv
 import shutil
 import os
 import pandas
-
+import myres
+from PyQt5.QtCore import (pyqtSignal, QBuffer, QByteArray, QFileInfo, QIODevice, QMimeData, QPoint, QSize, Qt)
+from PyQt5.QtGui import (qBlue, QColor, QDrag, qGreen, QImage, QKeySequence, QPalette, QPixmap, qRed)
+from PyQt5.QtWidgets import (QApplication, QColorDialog, QFileDialog, QFrame, QGridLayout, QLabel, QLayout, QMainWindow, QMenu, QMessageBox, QPushButton, QVBoxLayout)
+########small change to test git############
 class Ui_Rob(object):
     def setupUi(self, Rob):
         Rob.setObjectName("Rob")
@@ -99,6 +103,7 @@ class Ui_Rob(object):
 
 
 ########################COMMANDS#################################
+        self.Generate.setDisabled(True)
         self.csvtopdf.setChecked(True)
         self.generateall.setChecked(True)
         self.pdfselect.clicked.connect(self.getfilepdfpath)
@@ -109,32 +114,35 @@ class Ui_Rob(object):
         self.pdftocsv.clicked.connect(self.groupBox.setDisabled)
         self.outputfolder.clicked.connect(self.getoutputfolder)
         self.Generate.clicked.connect(self.genbut)
-        global pdfpath, csvpath, outputpath
-        pdfpath = ""
-        csvpath = ""
-        outputpath = ""
+        global pdfpath
+        global csvpath
+        global outputpath
+        pdfpath = None
+        csvpath = None
+        outputpath = None
 
 
     def getfilepdfpath(self, master):
+        global pdfpath
         if self.csvtopdf.isChecked():
             extensions = "PDF (*.pdf)"
             pdfpath, x = QtWidgets.QFileDialog.getOpenFileName(None, "Open files","", extensions)
             name = os.path.basename(pdfpath)
             self.pdflabel.setText(name)
-            self.checkforfiles(master)
-
         else:
             pdfpath = QtWidgets.QFileDialog.getExistingDirectory(None,"Select PDF Folder")
             name = os.path.basename(pdfpath)
             self.pdflabel.setText(name)
+        self.checkforfiles(master)
 
 
     def getfilecsvpath(self, master):
+        global csvpath
         extensions = "CSV (*.csv)"
         csvpath, x = QtWidgets.QFileDialog.getOpenFileName(None, "Open files","", extensions)
         name = os.path.basename(csvpath)
         self.csvlabel.setText(name)
-        if self.csvtopdf.isChecked():
+        if self.csvtopdf.isChecked() and self.isNotEmpty(csvpath):
             csvfile = open(csvpath)
             reader = csv.DictReader(csvfile)
             counter = 0
@@ -142,11 +150,14 @@ class Ui_Rob(object):
                 counter += 1
             counter = counter-1
             self.label_7.setText(str(counter) + " PDF's will be generated")
+        self.checkforfiles(master)
 
     def getoutputfolder(self, master):
+        global outputpath
         outputpath = QtWidgets.QFileDialog.getExistingDirectory(None,"Specify Output Destination")
         name = os.path.basename(outputpath)
         self.outputlabel.setText(name)
+        self.checkforfiles(master)
 
     def genbut(self, master):
         global txtinpt
@@ -157,41 +168,32 @@ class Ui_Rob(object):
                 self.csv_pdf(3)
             else:
                 if not txtinpt:
-                    self.csv_pdf(4)
+                    self.showMessageBox("Error","Missing recipe name")
                 else:
-                    print(txtinpt)
+                    self.csv_pdf(4)
+                    #Run the program for only this recipe
         else:
             self.pdf_csv(3)
 
 
     def csv_pdf(self, master):
-
-
         current_directory = os.getcwd()
         final_directory = outputpath
         #if outputpath == "asdasd":
             #error = QtGui.QMessageBOX.question(self, 'Error', "Output Folder not specified.",QtGui.QMessageBox.Ok)
         csvfile = open(csvpath)
         reader = csv.DictReader(csvfile)
-
-
-
-
-
         if master == 3:
             for row in reader:
                 pdf_funcions.write_pdf(pdfpath, row, row['untitled1'] + '.pdf')
-
         else:
             for row in reader:
-               if row['untitled1'] == file_name:
-                  print(file_name)
+               if row['untitled1'] == self.recipelinedit.text():
                   pdf_funcions.write_pdf(pdf_path, row, row['untitled1'] + '.pdf')
-
         for fname in os.listdir(current_directory):
             if fname.endswith('.pdf') and fname != os.path.basename(pdfpath) and fname != 'field_names.pdf':
                 shutil.move(os.path.join(current_directory, fname), final_directory)
-        os.remove(os.path.join(outputpath, 'Part Number.pdf'))
+        #os.remove(os.path.join(outputpath, 'Part Number.pdf'))
 
 
 
@@ -225,6 +227,48 @@ class Ui_Rob(object):
     #def updatelabel():
 
 
+    def checkforfiles(self,master):
+        if self.isNotEmpty(pdfpath) and self.isNotEmpty(csvpath) and self.isNotEmpty(outputpath) and self.csvtopdf.isChecked():
+            self.Generate.setDisabled(False)
+        elif self.isNotEmpty(pdfpath) and self.isNotEmpty(csvpath)and self.pdftocsv.isChecked():
+            self.Generate.setDisabled(False)
+            print("tru")
+        else:
+            print("nothing ready")
+
+    def isNotEmpty(self,s):
+        return bool(s and s.strip())
+
+
+
+
+
+
+
+    def showMessageBox(self, title, message):
+        msgBox=QMessageBox()
+        msgBox.setIcon(QMessageBox.Warning)
+        msgBox.setWindowTitle(title)
+        msgBox.setText(message)
+        msgBox.setStandardButtons(QMessageBox.Close)
+        msgBox.exec_()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -246,17 +290,6 @@ class Ui_Rob(object):
         self.pdfselect.setText(_translate("Rob", "PDF Template/Folder"))
         self.csvselect.setText(_translate("Rob", "CSV"))
         self.outputfolder.setText(_translate("Rob", "Output Folder"))
-
-    def checkforfiles(self,master):
-        ##HERE WE CHECK IF THE FILES ARE SELECTED##
-        if not pdfpath or not csvpath:
-            print("good to go")
-
-        else:
-            print("very not good")
-
-import myres
-
 
 if __name__ == "__main__":
     import sys
